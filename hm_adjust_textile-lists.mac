@@ -1,0 +1,78 @@
+// Adjust level of lists for Textile syntax
+//
+// How to setup
+//	Set up your keyboard shortcuts configuration as below
+//		1) * + * + right -> this macro
+//		2) * + * + left -> this macro
+// 	e.g.
+//		Shift + Alt + Right (or Left)
+//		aka Promote/Demote for Microsoft Office.
+//
+// Functions
+//	- process a line under cursor
+//	- process multi line seleted
+
+disabledraw;
+
+#indent_mode = 1;
+#unindent_mode = -1;
+#mode = #indent_mode;
+if(iskeydown(0x25)) #mode = #unindent_mode;
+
+#x = column;
+#y = lineno;
+
+if(selecting == yes){
+	#was_selecting = yes;
+	#target_top_row = seltoplineno;
+	#target_end_row = selendlineno;
+	if(selendcolumn == 0) #target_end_row = #target_end_row - 1;
+	escape;
+} else {
+	#target_top_row = lineno;
+	#target_end_row = #target_top_row;
+}
+
+#target_row = #target_top_row;
+while (#target_row <= #target_end_row){
+	call ProcLine #target_row;
+	#target_row = #target_row + 1;
+}
+
+EndMacro:
+
+if(#was_selecting == yes){
+	movetolineno 1, #target_top_row;
+	beginsel;
+	movetolineno 1, #target_end_row + 1;
+} else movetolineno #x + 1, #y;
+endmacroall;
+
+ProcLine:
+
+movetolineno 1, ##1;
+while(code == 0x20 || code == 0x09) right;
+
+if(code == 0x0D){;}
+else if((code == 0x23)	// #
+	|| (code == 0x2A))	// *
+{
+	if(#mode == #indent_mode){
+		insertfix char(code);	
+		#x = #x + 1;
+	} else if(#mode == #unindent_mode) {
+		#code = code;
+		right;
+		if(code == #code){
+			delete;
+			if(column < #x) #x= #x - 1;
+		}
+	}
+} else {
+	if(#mode == #indent_mode){
+		golinetop2;
+		insertfix "* ";
+		#x = #x + 2;
+	}
+}
+return 0;
